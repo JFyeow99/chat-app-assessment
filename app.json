@@ -8,9 +8,6 @@
     "scheme": "chatapp",
     "userInterfaceStyle": "light",
     "backgroundColor": "#f2e9e3",
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -19,9 +16,6 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.jf.work.chatappassessment"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-image",
@@ -35,6 +29,12 @@
           "imageWidth": 200
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d8a8e090-96be-4413-b2f9-3123f92edf7a"
+      }
+    },
+    "owner": "jf.work"
   }
 }

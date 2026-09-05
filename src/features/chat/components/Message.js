@@ -9,7 +9,13 @@ export default function Message({ text, createdAt, direction, status, onRetry })
 
   return (
     <View style={[styles.row, outgoing && styles.rowOutgoing]}>
-      <View style={[styles.bubble, outgoing ? styles.outgoing : styles.incoming, failed && styles.failed]}>
+      <View
+        style={[
+          styles.bubble,
+          outgoing ? styles.outgoing : styles.incoming,
+          failed && styles.failed,
+        ]}
+      >
         <Text style={[styles.text, outgoing && styles.textOutgoing]}>{text}</Text>
         <View style={styles.footer}>
           <Text
@@ -21,7 +27,9 @@ export default function Message({ text, createdAt, direction, status, onRetry })
           >
             {formatRelativeTime(createdAt)}
           </Text>
-          {outgoing && status === 'sent' && <Icon name={'check-all'} size={14} color={colors.green} />}
+          {outgoing && status === 'sent' && (
+            <Icon name={'check-all'} size={14} color={colors.mocha100} />
+          )}
         </View>
       </View>
       {failed && (
@@ -46,7 +54,7 @@ const styles = StyleSheet.create({
   outgoing: { backgroundColor: colors.mocha500 },
   failed: { borderWidth: 1, borderColor: colors.red },
   text: { fontSize: 15, color: colors.mocha900 },
-  textOutgoing: { color: colors.mocha100 },
+  textOutgoing: { color: colors.white },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: space.xs },
   dateTime: { fontSize: 12, letterSpacing: 0.5, color: colors.mocha500 },
   dateTimeOutgoing: { color: colors.mocha100 },

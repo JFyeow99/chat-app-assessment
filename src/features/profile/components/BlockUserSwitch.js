@@ -1,12 +1,17 @@
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, Switch, ToastAndroid, View } from 'react-native';
 
 import { useBlockStore } from '@/store/blockStore';
 import { colors, space } from '@/theme/tokens';
 import { Text } from '@/ui';
 
-export function BlockUserSwitch({ contactId }) {
-  const blocked = useBlockStore((s) => s.isBlocked(contactId));
+export function BlockUserSwitch({ id, name }) {
+  const blocked = useBlockStore((s) => s.isBlocked(id));
   const toggleBlocked = useBlockStore((s) => s.toggleBlocked);
+
+  const onToggling = (value) => {
+    ToastAndroid.show(`${name} has been ${value ? 'blocked' : 'unblocked'}`, ToastAndroid.SHORT);
+    toggleBlocked(id);
+  };
 
   return (
     <View style={styles.row}>
@@ -16,7 +21,7 @@ export function BlockUserSwitch({ contactId }) {
       </View>
       <Switch
         value={blocked}
-        onValueChange={() => toggleBlocked(contactId)}
+        onValueChange={onToggling}
         trackColor={{ false: colors.mocha300, true: colors.red }}
         thumbColor={colors.warmWhite}
       />

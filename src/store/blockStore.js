@@ -9,6 +9,12 @@ import { createJSONStorage, persist } from 'zustand/middleware';
  * @property {(id: number | string) => boolean} isBlocked
  */
 
+const syncStorage = {
+  getItem: (key) => Storage.getItemSync(key),
+  setItem: (key, value) => Storage.setItemSync(key, value),
+  removeItem: (key) => Storage.removeItemSync(key),
+};
+
 export const useBlockStore = create(
   persist(
     /** @returns {BlockStore} */
@@ -24,7 +30,7 @@ export const useBlockStore = create(
     }),
     {
       name: 'blocked-contacts',
-      storage: createJSONStorage(() => Storage),
-    },
-  ),
+      storage: createJSONStorage(() => syncStorage),
+    }
+  )
 );

@@ -54,7 +54,7 @@ export function ProfileScreen() {
         ))}
       </View>
       <View style={[styles.card, styles.blockCard]}>
-        <BlockUserSwitch contactId={contact.id} />
+        <BlockUserSwitch {...contact} />
       </View>
     </ScrollView>
   );
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: space.md,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
   },

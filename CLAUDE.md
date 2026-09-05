@@ -47,7 +47,7 @@ Anything that doesn't serve one of those six is out of scope. When in doubt, cut
 
 **Target: Android only.** The APK is the deliverable; there is no iOS build. No `Platform.OS` forks for iOS, no iOS-only styling branches.
 
-**No `expo-blur`.** Floating surfaces are opaque (see 8.1). Real backdrop blur on Android needs `dimezisBlurView` — a per-frame backdrop resample — for a marginal gain on ~64px strips. If it's ever wanted it goes on the tab bar only, measured, behind a `glassBlur` flag.
+**No `expo-blur`.** The tab bar is an opaque translucent fill plus a hairline, not a blur (see 8.1). Real backdrop blur on Android needs `dimezisBlurView` — a per-frame backdrop resample — for a marginal gain on a ~64px strip, and nobody's picked that up.
 
 **Do not add** a component library, a form library, i18n, an analytics SDK, or a navigation state persister. Each one is dead weight a reviewer has to read past.
 
@@ -164,10 +164,14 @@ Each hook declares and exports its own key factory next to the query it owns —
 - Flatten `pages.flatMap(p => p.results)` inside `select`, not in the component, so flattening is cached rather than recomputed each render.
 - `/api/users` also supports `q` (case-insensitive across id, username, name, email — verified in the handler). A debounced search field on the Chats tab is cheap — the query key becomes `contacts.list({ q })` and the infinite query resets naturally. Worth doing if day 4 has room.
 
-### Messages — a plain query, deliberately not infinite
+### Messages — an infinite query
 
-- `useQuery` against `/api/posts?userId=<id>&limit=10`, key `messages.byContact(id)`.
-- **Not `useInfiniteQuery`.** The seed gives each user 1–4 posts, so a conversation can never exceed one page. An infinite query here would be structurally incapable of fetching a second page — scaffolding that exists to look impressive. The infinite query lives on contacts, where it actually paginates. State this in the README; deliberately _not_ using a pattern is a stronger signal than using it everywhere.
+- `useInfiniteQuery` against `/api/posts?userId=<id>&limit=10&offset=<n>`, key `messages.byContact(id)` (exported from `useMessages.js` as `messagesByContactKey`). Same offset/`total` arithmetic as contacts: `getNextPageParam` returns `offset + limit` while under `total`, `undefined` once it isn't. `initialPageParam: 0`.
+- **In practice `hasNextPage` is almost always `false` after page one** — the seed gives each user 1–4 posts, under one page of 10. This was originally built as a plain `useQuery` for exactly that reason (an infinite query here can't demonstrate real multi-page fetching the way contacts does). Switched to `useInfiniteQuery` anyway for interface consistency with a real chat app, where a conversation *can* run past one page — the mock's shallow seed data is the limiting factor, not the query shape. Say this in the README so it reads as a considered call, not a miss: the pattern is correct for the domain even though this particular dataset rarely exercises page two.
+- Flatten `pages.flatMap(p => p.results)` inside `select`, same as contacts.
+- Older messages load at the **top** of the list (`onStartReached`, not `onEndReached`) — the opposite edge from contacts, because this list renders ascending and isn't inverted (see section 8).
+- **Scroll-to-latest on open.** `ChatScreen` holds a `FlashList` ref (via `List`'s `forwardRef`) and, once the first page has loaded, calls `scrollToEnd({ animated: false })` once per mount. This is what actually makes "reopen a conversation and see the latest message" true in practice — it doesn't fix the fetch-direction issue above (page one is still the *oldest* chunk for a hypothetical contact with >10 posts), but since every contact's `total` fits in that one page, page one already contains the newest message too, so scrolling to the end of what's loaded is scrolling to the true latest message. Re-mount-only (a `scrolledToEnd` ref guards it), not on every render or every sent message.
+- The optimistic-send mutation writes directly into this cache (see below), so its cache shape is `{ pages, pageParams }`, not a flat envelope — a pending/reconciled message is written into the **last** page, matching where the mock API appends a pushed post.
 - Server-side filtering by `userId` is supported, so **never filter client-side**.
 - Use the top-level `/api/posts?userId=` route, not the nested `/api/users/:id/posts` route. Confirmed from source: the nested route builds its own separate module-scoped array and normalises extra fields (`slug`, `updatedAt`). They are two different arrays with two different write histories — mixing them produces inconsistent shapes and inconsistent contents.
 - Sort ascending by `createdAt` in the mapper and render inverted (newest at the visual bottom). The seed happens to be ascending already, but do not rely on file order — sort explicitly, because a POST that lands in memory is appended, not inserted in date order.
@@ -209,7 +213,7 @@ Set `staleTime` (30–60s for contacts), a sane `retry`, and wire `onlineManager
 
 Custom component passed to `tabBar`, not `tabBarStyle` overrides.
 
-**Spec:** absolutely positioned, `bottom = insets.bottom + 12`, `marginHorizontal: 16`, fully rounded (9999), ~64px tall. Rendered with the shared `<GlassSurface>` (see 8.1) — an opaque `Base @ 92%` pill with a hairline, not a hard solid card. It reads as floating because it's a distinct rounded shape with an edge lighter than the `Base` behind it and the list scrolls under it — no blur. Two items: Chats, Settings.
+**Spec:** absolutely positioned, `bottom = insets.bottom + 12`, `marginHorizontal: 16`, fully rounded (9999), ~64px tall. Built directly in `TabBar.js` (see 8.1, there's no shared surface component) as an opaque translucent fill plus a hairline border, not a hard solid card. It reads as floating because it's a distinct rounded shape and the list scrolls under it — no blur. Two items: Chats, Settings.
 
 **Gotchas — all four of these will bite:**
 
@@ -226,88 +230,72 @@ Press feedback: scale to ~0.96 with Reanimated. No haptics. Screen switch uses `
 
 Not a card. The header is a vertical gradient that fades scrolled content out toward the top, with the controls sitting directly on it.
 
-**Spec:** `headerTransparent: true` with a custom `header` component. A full-width `expo-linear-gradient`: `Base` at full opacity across the top (through the status-bar area) fading to `Base` at 0 alpha at its bottom edge; height ≈ `useHeaderHeight()` + ~24. The gradient layer is `pointerEvents="none"`. Over it: on the Chat screen — back button, avatar, name, and a subtitle line, the whole cluster one pressable that navigates to Profile; on the Chats screen — the title and (later) the search field.
+**Spec:** `headerTransparent: true` with a custom `header` component (`HeaderScrim.js`). A full-width `expo-linear-gradient` running `mocha300 → mocha100 → mocha100 @ 0%` at stops `[0, 0.8, 1]` — the `mocha300` sliver at the very top gives the status-bar area a touch more contrast before settling into the background color, then fading to transparent; height = `insets.top + APP_BAR_HEIGHT (56)`. The gradient layer is `pointerEvents="none"`. Over it: on the Chat screen — back button, avatar, and name, the whole cluster one pressable that navigates to Profile; on the Chats/Profile/Settings screens — a title and/or back button.
 
 **Gotchas:**
 
 - **Top padding.** Use `useHeaderHeight()` and pad scroll content by it. Do not guess.
 - **Gradient must not eat touches.** `pointerEvents="none"` on the gradient layer, or list rows under the fade become untappable.
-- **Inverted lists invert padding.** On the Chat screen's inverted list, `paddingTop` renders at the visual bottom and `paddingBottom` at the visual top. Get this wrong and messages hide under the header while a gap opens above the composer. Verify visually before moving on.
+- **Not an inverted list.** The Chat screen renders messages ascending, top-to-bottom, with `paddingTop` covering the header and the composer pinned below the list in normal flex flow — no `inverted` prop. An inverted list (padding roles swapped, scroll-to-bottom-by-default) was considered but never built; if it is later, remember `paddingTop` and `paddingBottom` swap visual roles.
 
-## 8.1 Glass surface — shared
+## 8.1 Glass surface — inline on the tab bar, not a shared component
 
-One component, `ui/GlassSurface.js`, used by the floating tab bar and the Chat composer. The header is the gradient scrim in section 8, not this. Implement the treatment once.
+There's no `ui/GlassSurface.js`. Only the tab bar (`navigation/tab/TabBar.js`) gets the treatment, built directly where it's used: a wrapper with `overflow: 'hidden'` and `borderRadius: 9999` containing two absolutely-filled layers — a `barFill` view using `glass.tint` and a `barBorder` view using `glass.border` — with the tab items rendered on top. The Chat composer (`features/chat/components/Sender.js`) does **not** reuse this; it's a separate plain bordered pill (`mocha300` border, `mocha100` fill, `elevation: 1`). If the two ever need to look identical, pulling the tab-bar treatment out into a shared component is the move — right now they're two independent implementations that happen to rhyme.
 
 **This app is Android-only.** No iOS path, no `Platform` fork.
 
-**Committed design: an opaque translucent fill.** What sells "floating glass" here is, in order: (1) content genuinely scrolling _under_ the surface, (2) a 1px hairline edge lighter than the fill, (3) the surface being a distinct rounded shape a touch lighter than the `Base` behind it. No `BlurView`.
-
-**Composition** — two layers inside a wrapper with `overflow: 'hidden'` and the target radius:
-
-1. A fill: `Base` at ~92% opacity (`glassTint`). Opaque enough to guarantee text and input contrast over anything scrolling under it, translucent enough to read as a surface and not a hard card.
-2. A 1px `Surface1` hairline border at ~60% opacity (`glassBorder`).
-
-Content sits above both.
+**What's actually built:** an opaque translucent fill (`glass.tint`, `rgba(245, 245, 245, 0.8)` — warmWhite @ 80%) plus a 1px hairline border (`glass.border`, `rgba(207, 176, 160, 0.6)` — mocha300 @ 60%), with the contacts list scrolling underneath. No `BlurView`, no `expo-blur` dependency.
 
 **Non-negotiables:**
 
 - **`overflow: 'hidden'` on the wrapper, always.** The rounded corners must clip the fill and the border cleanly.
-- **No `elevation`.** It clips at rounded corners on Android. Lift comes from the fill being lighter than what passes under it, plus the hairline (see section 9).
-- **Content must scroll under the bar.** Transparent header/footer plus `contentContainerStyle` padding — never a wrapper that clips the list short. The surface reads as floating only if content passes beneath it.
+- **No `elevation` on the fill/border views themselves.** It clips at rounded corners on Android.
+- **Content must scroll under the bar.** `contentContainerStyle` padding on the list (`FLOATING_TAB_BAR_TOTAL_HEIGHT`), never a wrapper that clips the list short.
 
-**Optional blur — later, measured, tab bar only.** If there's slack: put an `expo-blur` `BlurView` behind the fill on the tab bar with `experimentalBlurMethod="dimezisBlurView"`, `intensity: 45` (`blurIntensity`), and drop the fill to ~55%. Gate it with the `glassBlur` boolean token so reverting is one line. `dimezisBlurView` re-samples the backdrop every frame and the APK is the graded deliverable, so measure on the target device: scroll the contacts list hard with the perf monitor on. Holds 60 → keep. Drops frames → `glassBlur` off. `expo-blur` needs the dev client, which `keyboard-controller` already forces.
-
-**README sentence:** "Floating surfaces are opaque translucent fills, not `BlurView`: the header dissolves scrolled content behind a `Base` → transparent gradient, and the tab bar and composer are rounded `Base @ 92%` pills with a hairline. Real `dimezisBlurView` blur was considered and skipped — a per-frame backdrop resample for a marginal effect on ~64px strips." The reasoned choice is worth more to a reviewer than the effect.
-
-**Composer.** The message input at the bottom of the Chat screen uses the same `<GlassSurface>` so it matches the tab bar. It replaces the tab bar in that screen's visual slot.
+`glass.blur` and `glass.blurIntensity` exist as tokens in `theme/tokens.js` but nothing reads them — there is no blur experiment wired up, gated or otherwise. If real backdrop blur (`dimezisBlurView`) is ever worth trying, it's tab-bar-only, measured on-device against the perf monitor, behind that `blur` flag — but that's a speculative future, not planned work.
 
 ---
 
-## 9. Design tokens — Catppuccin Mocha
+## 9. Design tokens — warm mocha (light)
 
-Dark, low-contrast-background, single-accent. Tokens live in `theme/tokens.js`; no raw hex or magic numbers in components. This app is **dark only** — do not build a light variant.
+A light, warm cream-and-brown palette, single accent. Tokens live in `theme/tokens.js`; no raw hex or magic numbers in components. This app is **light only** — no dark variant, no theme toggle. (An earlier draft of this spec called for dark Catppuccin Mocha; that was superseded during implementation and never built — the palette below is what's actually in `tokens.js`.)
 
 **Colour**
 
-| Role                                        | Token    | Hex       |
-| ------------------------------------------- | -------- | --------- |
-| App background                              | Base     | `#1e1e2e` |
-| Recessed / behind floating bars             | Mantle   | `#181825` |
-| Card, tab bar, header, incoming bubble      | Surface0 | `#313244` |
-| Hairline, pressed state, skeleton highlight | Surface1 | `#45475a` |
-| Disabled / dividers                         | Surface2 | `#585b70` |
-| Muted text, timestamps                      | Overlay2 | `#9399b2` |
-| Secondary text                              | Subtext1 | `#bac2de` |
-| Primary text                                | Text     | `#cdd6f4` |
-| Accent — outgoing bubble, send, active tab  | Mauve    | `#cba6f7` |
-| Success — delivered tick                    | Green    | `#a6e3a1` |
-| Error — failed send, retry                  | Red      | `#f38ba8` |
+| Role                                                                | Token       | Value                |
+| -------------------------------------------------------------------- | ----------- | -------------------- |
+| App background; text/icon sitting on the accent                     | `mocha100`  | `#f2e9e3`             |
+| Hairline, divider, muted/secondary text, disabled, glass border base | `mocha300`  | `#cfb0a0`             |
+| Accent — outgoing bubble, send button, active tab, avatar placeholders, cursor | `mocha500` | `#a47864`      |
+| Secondary heading/label text                                         | `mocha700`  | `#69493c`             |
+| Primary text                                                         | `mocha900`  | `#2e1e18`             |
+| Card / grouped-row fill, switch thumb                                | `warmWhite` | `rgb(245, 245, 245)` |
+| Incoming bubble fill, skeleton base                                  | `gray`      | `#E5E5E5`             |
+| Success — sent tick                                                  | `green`     | `#5b8c5a`             |
+| Error — failed send, retry                                           | `red`       | `#B5533E`             |
 
-Verify these against the official Catppuccin palette before committing — copy from source rather than trusting a transcription.
+`white` is used only for the send-icon glyph and the profile-card avatar initials. `yellow`, `lightYellow`, and `black` also exist in `theme/tokens.js` but aren't consumed anywhere yet.
 
-**Two rules that follow from going dark, and both are easy to get wrong:**
+**Two things that follow from a light, low-contrast-background theme:**
 
-1. **Elevation is surface and translucency, not shadow.** Drop shadows are nearly invisible on `#1e1e2e`. The tab bar and composer lift off the page by being a distinct rounded fill lighter than what passes under them, plus a 1px `Surface1` hairline; the header lifts by scrolled content fading into it. Delete the single-shadow-tier rule — it does not apply here. Skip `elevation` entirely: it clips at rounded corners on Android.
+1. **Elevation is mostly translucency + hairline, not shadow.** The tab bar lifts off the page with a translucent fill (`glass.tint`) over a hairline (`glass.border`, see 8.1); the header lifts by scrolled content fading into the gradient. A couple of spots (the header's back-button chip, the composer pill) do use a bare `elevation: 1` — kept low deliberately, since anything higher clips at rounded corners on Android.
+2. **Text on the accent must be light.** `mocha500` is a mid-tone brown, so content sitting on it (outgoing bubble text, the send icon) uses `mocha100`/`white`, not `mocha900` — dark-on-dark-ish accent fails contrast.
 
-**Glass tokens** — `glassTint: Base @ 92%` (the shipped opaque fill) · `glassBorder: Surface1 @ 60%` · `glassBlur: false` + `blurIntensity: 45` (read only by the optional tab-bar blur experiment, see 8.1). **Header scrim tokens** — `scrimFrom: Base @ 100%` · `scrimTo: Base @ 0%`. `<GlassSurface>` consumes the glass tokens; the header gradient consumes the scrim tokens.
+**Type** — Inter, loaded at three weights only (`Inter_400Regular`, `Inter_600SemiBold`, `Inter_700Bold`, deep-imported in `App.js` so Metro doesn't bundle all 18 faces). Screen title 22/700, row name 16/600, message body 15/400, timestamps and meta 12–14/400 in `mocha500`.
 
-2. **Text on the accent must be dark.** Catppuccin accents are pastel. White text on Mauve fails contrast badly. Outgoing bubble text is `Base #1e1e2e` on `Mauve`, which passes comfortably and looks correct. The same applies to the send button icon.
-
-**Type** — Inter. Screen title 22/500, row name 16/600, body 16/400, timestamps and meta 14/400 in Overlay2, badge 11/600. On dark backgrounds, avoid weights below 400 — thin type on dark reads as blurry on Android.
-
-**Radius** — 8 inputs and buttons · 14 cards · 20 sheets and floating header · 9999 pills, avatars, tab bar.
+**Radius** — 14 cards and grouped rows · 16 message bubbles · 32 composer pill · 9999 avatars and tab bar.
 
 **Spacing** — 4px base: 4 · 8 · 12 · 16 · 24 · 32 · 48.
 
-**Message bubbles** — outgoing: `Mauve` fill, `Base` text, radius 20 with the bottom-right corner tightened to 6. Incoming: `Surface0` fill, `Text`, bottom-left tightened to 6. Max width 78%. Timestamp in `Overlay2`, outside the bubble. No tails, no gradients, no shadows.
+**Message bubbles** — outgoing: `mocha500` fill, `mocha100` text. Incoming: `gray` fill, `mocha900` text. Max width 78%, uniform 16px radius on both — the per-corner "tightened corner" treatment from an earlier draft was never implemented. Timestamp sits inside the bubble, dimming to `mocha300` while `status: 'sending'`.
 
-**Message status** — sending: timestamp dims to `Surface2`. Delivered: `Green` tick. Failed: `Red` bubble border plus a tappable retry in `Red`.
+**Message status** — sending: timestamp dims to `mocha300`. Sent: `green` check-all icon. Failed: `red` bubble border plus a tappable "Failed to send · Tap to retry" in `red`.
 
-**Skeletons** — shimmer runs `Surface0` → `Surface1`. Never white or grey.
+**Skeletons** — shimmer runs `gray` → `mocha300`.
 
-**System chrome** — set `StatusBar` style to light, set the Android navigation bar to `Base`, and set the Expo splash and `backgroundColor` in `app.json` to `Base`. A white flash on cold start undoes the whole theme, and it shows up in screen recordings.
+**System chrome** — `StatusBar` style `dark` (dark icons/text read on the light background), Android nav bar and the Expo splash/`app.json` `backgroundColor` both `mocha100` (`#f2e9e3`), set once in `App.js`. A background-color mismatch at cold start undoes the whole theme, and it shows up in screen recordings.
 
-Accent discipline: `Mauve` appears once or twice per screen. Everything else is Base, Surface, and Text. Do not add a second accent for variety.
+Accent discipline: `mocha500` is the one recurring accent — send action, outgoing bubbles, active tab, avatar placeholders. Everything else is the mocha neutral ramp plus `green`/`red` for status.
 
 ---
 
