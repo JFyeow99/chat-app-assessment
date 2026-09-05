@@ -10,8 +10,9 @@ export default function Sender({ onSend }) {
   const [msg, setMsg] = useState('');
 
   const onSending = () => {
-    if (!msg) return;
-    onSend(msg);
+    const trimmed = msg.trim();
+    if (!trimmed) return;
+    onSend(trimmed);
     setMsg('');
   };
 
@@ -23,9 +24,17 @@ export default function Sender({ onSend }) {
           cursorColor={colors.mocha500}
           value={msg}
           onChangeText={setMsg}
+          placeholder={'Write some message'}
+          placeholderTextColor={colors.mocha300}
         />
       </View>
-      <Icon name={'send'} contStyle={styles.sendIcon} color={colors.white} onPress={onSending} />
+      <Icon
+        name={'send'}
+        contStyle={styles.sendIcon}
+        color={colors.white}
+        onPress={onSending}
+        disabled={!msg.trim()}
+      />
     </View>
   );
 }
