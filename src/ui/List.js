@@ -1,5 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
+import { forwardRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { colors, space } from '@/theme/tokens';
@@ -11,16 +12,19 @@ const CAUGHT_UP_TEXT = "You're all caught up";
 const EMPTY_IMAGE = require('@assets/empty-box.webp');
 const SKELETON_ROWS = 7;
 
-export default function List({
-  style,
-  showFooterText,
-  footerText,
-  emptyText,
-  paddingTop = 0,
-  paddingBottom,
-  loading = false,
-  ...props
-}) {
+const List = forwardRef(function List(
+  {
+    style,
+    showFooterText,
+    footerText,
+    emptyText,
+    paddingTop = 0,
+    paddingBottom,
+    loading = false,
+    ...props
+  },
+  ref,
+) {
   const footerContent = footerText ?? (showFooterText ? CAUGHT_UP_TEXT : null);
   const contentPadding = { paddingTop };
 
@@ -39,6 +43,7 @@ export default function List({
 
   return (
     <FlashList
+      ref={ref}
       style={[styles.screen, style]}
       contentContainerStyle={[styles.content, contentPadding]}
       ItemSeparatorComponent={Separator}
@@ -47,7 +52,9 @@ export default function List({
       {...props}
     />
   );
-}
+});
+
+export default List;
 
 const SkeletonRow = () => (
   <View style={styles.skeletonRow}>

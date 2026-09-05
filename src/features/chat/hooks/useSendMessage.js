@@ -21,6 +21,28 @@ const patchByClientId = (clientId, patch) => (old) => {
   };
 };
 
+const upsertPendingPage = (post) => (old) => {
+  if (!old) return old;
+  const pages = old.pages.map((page) => ({
+    ...page,
+    results: page.results.filter((p) => p.clientId !== post.clientId),
+  }));
+  const lastIndex = pages.length - 1;
+  pages[lastIndex] = { ...pages[lastIndex], results: [...pages[lastIndex].results, post] };
+  return { ...old, pages };
+};
+
+const patchByClientIdPages = (clientId, patch) => (old) => {
+  if (!old) return old;
+  return {
+    ...old,
+    pages: old.pages.map((page) => ({
+      ...page,
+      results: page.results.map((p) => (p.clientId === clientId ? { ...p, ...patch } : p)),
+    })),
+  };
+};
+
 const useSendMessage = () => {
   const { params } = useRoute();
   const contactId = params?.contactId;
@@ -39,23 +61,23 @@ const useSendMessage = () => {
         createdAt: new Date().toISOString(),
         status: 'sending',
       };
-      queryClient.setQueryData(key, upsertPending(pending));
+      queryClient.setQueryData(key, upsertPendingPage(pending));
       queryClient.setQueryData(previewIndexKey, upsertPending(pending));
     },
 
     onError: (_err, { clientId }) => {
-      queryClient.setQueryData(key, patchByClientId(clientId, { status: 'failed' }));
+      queryClient.setQueryData(key, patchByClientIdPages(clientId, { status: 'failed' }));
       queryClient.setQueryData(previewIndexKey, patchByClientId(clientId, { status: 'failed' }));
     },
 
     onSuccess: (response, { clientId }) => {
       const patch = { status: 'sent', serverId: response.id };
-      queryClient.setQueryData(key, patchByClientId(clientId, patch));
+      queryClient.setQueryData(key, patchByClientIdPages(clientId, patch));
       queryClient.setQueryData(previewIndexKey, patchByClientId(clientId, patch));
     },
 
     onSettled: (_data, error) => {
-      if (!error) queryClient.invalidateQueries({ queryKey: key });
+      if (error) queryClient.invalidateQueries({ queryKey: key });
     },
   });
 
