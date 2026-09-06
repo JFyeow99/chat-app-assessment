@@ -29,9 +29,11 @@ src/
 
 ## Screenshots
 
-| Chats | Conversation | Empty state | Settings | Block contact | Unblock contact |
-| --- | --- | --- | --- | --- | --- |
-| <img src="assets/screenshots/chats.jpg" width="100%" alt="Chats list"> | <img src="assets/screenshots/chat-message.jpg" width="100%" alt="Conversation with a sent message"> | <img src="assets/screenshots/empty-state.jpg" width="100%" alt="Empty state placeholder"> | <img src="assets/screenshots/settings.jpg" width="100%" alt="Settings screen"> | <img src="assets/screenshots/block-user.jpg" width="100%" alt="Blocking a contact"> | <img src="assets/screenshots/unblock-user.jpg" width="100%" alt="Unblocking a contact"> |
+| Chats | Conversation | Empty state |
+| --- | --- | --- |
+| <img src="assets/screenshots/chats.jpg" width="100%" alt="Chats list"> | <img src="assets/screenshots/chat-message.jpg" width="100%" alt="Conversation with a sent message"> | <img src="assets/screenshots/empty-state.jpg" width="100%" alt="Empty state placeholder"> |
+| **Settings** | **Block contact** | **Unblock contact** |
+| <img src="assets/screenshots/settings.jpg" width="100%" alt="Settings screen"> | <img src="assets/screenshots/block-user.jpg" width="100%" alt="Blocking a contact"> | <img src="assets/screenshots/unblock-user.jpg" width="100%" alt="Unblocking a contact"> |
 
 ## AI tooling
 
