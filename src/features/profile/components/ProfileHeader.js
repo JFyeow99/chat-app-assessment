@@ -2,20 +2,14 @@ import { StyleSheet, View } from 'react-native';
 
 import { HeaderScrim } from '@/navigation/HeaderScrim';
 import { colors, space } from '@/theme/tokens';
-import { Icon, Text } from '@/ui';
+import { BackButton, Text } from '@/ui';
 
-export function ProfileHeader({ navigation, title }) {
+export function ProfileHeader({ title }) {
   return (
     <HeaderScrim>
       {(insets) => (
         <View style={[styles.main, { marginTop: insets.top + space.sm }]}>
-          <Icon
-            name={'chevron-left'}
-            contStyle={styles.backIcon}
-            size={24}
-            color={colors.mocha900}
-            onPress={() => navigation.goBack()}
-          />
+          <BackButton />
           {title ? <Text style={styles.title}>{title}</Text> : null}
         </View>
       )}
@@ -25,11 +19,5 @@ export function ProfileHeader({ navigation, title }) {
 
 const styles = StyleSheet.create({
   main: { flexDirection: 'row', alignItems: 'center', gap: space.lg, marginHorizontal: space.lg },
-  backIcon: {
-    padding: space.sm,
-    backgroundColor: colors.mocha100,
-    borderRadius: space.xxxl,
-    elevation: 1,
-  },
   title: { fontSize: 18, fontWeight: '600', color: colors.mocha900 },
 });

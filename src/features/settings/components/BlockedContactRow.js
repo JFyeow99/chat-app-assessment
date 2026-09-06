@@ -1,24 +1,15 @@
-import { Image } from 'expo-image';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { useBlockStore } from '@/store/blockStore';
-import { AVATAR_PLACEHOLDER, colors, space } from '@/theme/tokens';
-import { Text } from '@/ui';
-
-const AVATAR_SIZE = 48;
+import { colors, space } from '@/theme/tokens';
+import { Avatar, Text } from '@/ui';
 
 const BlockedContactRow = ({ contact }) => {
   const toggleBlocked = useBlockStore((s) => s.toggleBlocked);
 
   return (
     <View style={styles.row}>
-      <Image
-        source={contact.avatar}
-        placeholder={AVATAR_PLACEHOLDER}
-        style={styles.avatar}
-        contentFit={'cover'}
-        transition={150}
-      />
+      <Avatar source={contact.avatar} />
       <View style={styles.text}>
         <Text style={styles.name}>{contact.name}</Text>
         {Boolean(contact.username) && <Text style={styles.username}>@{contact.username}</Text>}
@@ -41,12 +32,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.md,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: 9999,
-    backgroundColor: colors.mocha300,
   },
   text: { flex: 1, gap: 2 },
   name: { fontSize: 16, fontWeight: '600', color: colors.mocha900 },

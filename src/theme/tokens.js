@@ -17,8 +17,6 @@ export const colors = {
   gray: '#E5E5E5',
 };
 
-export const AVATAR_PLACEHOLDER = 'https://placehold.net/avatar-4.svg';
-
 export const glass = {
   tint: 'rgba(245, 245, 245, 0.8)',
   border: 'rgba(207, 176, 160, 0.6)',

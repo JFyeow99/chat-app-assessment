@@ -1,12 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatRelativeTime } from '@/lib/time';
-import { AVATAR_PLACEHOLDER, colors, space } from '@/theme/tokens';
-import { Text } from '@/ui';
-
-const AVATAR_SIZE = 48;
+import { colors, space } from '@/theme/tokens';
+import { Avatar, Text } from '@/ui';
 
 const ChatRow = ({ contact }) => {
   const navigation = useNavigation();
@@ -18,15 +15,7 @@ const ChatRow = ({ contact }) => {
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      <Image
-        source={contact.avatar}
-        placeholder={AVATAR_PLACEHOLDER}
-        style={styles.avatar}
-        contentFit={'cover'}
-        transition={150}
-        recyclingKey={String(contact.id)}
-        placeholderContentFit={'cover'}
-      />
+      <Avatar source={contact.avatar} recyclingKey={String(contact.id)} />
       <View style={styles.rowText}>
         <View style={styles.topLine}>
           <Text style={styles.name} numberOfLines={1}>
@@ -50,12 +39,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.md,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: 9999,
-    backgroundColor: colors.mocha300,
   },
   rowText: { flex: 1, gap: space.xs },
   topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
