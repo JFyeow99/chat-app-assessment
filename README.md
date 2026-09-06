@@ -2,6 +2,8 @@
 
 A React Native chat app built as a take-home assessment for a mobile developer role at **Respond.io**. It's a portfolio piece against a mock REST API, not a production app — the goal was to demonstrate TanStack Query usage, state boundaries, and RN architecture, not to build a complete messaging product.
 
+**APK:** [`chat-app-assessment.apk`](./chat-app-assessment.apk) (41 MB, `arm64-v8a`) — committed at the repo root. Use the **Download raw file** button on that page.
+
 Feature-first, not type-first:
 
 ```
