@@ -3,10 +3,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { colors } from '@/theme/tokens';
 
-/**
- * Grouped-row surface: warmWhite fill, hairline border, rounded, with a
- * hairline divider auto-inserted between children.
- */
 export default function Card({ style, children }) {
   const items = Children.toArray(children);
   return (
